@@ -28,7 +28,7 @@ def exception_handler(train_func):
             t = time.strftime('%Y-%m-%d_%H-%M-%S',
                               time.localtime(time.time()))
             train_pipe_line.save_model(
-                f'last_policy_value_net_{t}.pth', 'train_losses', 'games')
+                f'last_policy_value_net_{t}', 'train_losses', 'games')
 
     return wrapper
 
@@ -250,6 +250,7 @@ class TrainModel:
         print('🩺 正在测试当前模型...')
         n_wins = 0
         for i in range(self.n_test_games):
+            print(f'🩺 正在测试当前模型... {i+1}/{self.n_test_games}')
             self.chess_board.clear_board()
             self.mcts.reset_root()
             mcts.reset_root()
@@ -324,9 +325,10 @@ class TrainModel:
         model = f'model/{model}'
         if os.path.exists(model):
             print(f'💎 载入模型 {model} ...\n')
-            net = torch.load(model).to(self.device)  # type:PolicyValueNet
+            net = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet
             net.set_device(self.is_use_gpu)
         else:
+            print(f'💎 初始化模型 {model} ...\n')
             net = PolicyValueNet(n_feature_planes=self.chess_board.n_feature_planes,
                                  is_use_gpu=self.is_use_gpu, board_len=board_len).to(self.device)
 

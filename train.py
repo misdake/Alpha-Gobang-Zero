@@ -11,7 +11,7 @@ train_config = {
     'n_test_games': 10,
     'n_mcts_iters': 500,
     'n_self_plays': 4000,
-    'is_save_game': False,
+    'is_save_game': True,
     'n_feature_planes': 6,
     'check_frequency': 100,
     'start_train_size': 500

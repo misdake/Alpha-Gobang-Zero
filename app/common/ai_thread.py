@@ -1,5 +1,7 @@
 # coding:utf-8
 import torch
+from torch import cuda
+
 from alphazero import AlphaZeroMCTS, PolicyValueNet, RolloutMCTS
 from app.common.model_utils import testModel
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -59,7 +61,7 @@ class AIThread(QThread):
         self.c_puct = c_puct
         self.n_iters = n_iters
         self.isUseGPU = is_use_gpu
-        self.device = torch.device('cuda:0' if self.isUseGPU else 'cpu')
+        self.device = torch.device('cuda:0' if self.isUseGPU and cuda.is_available() else 'cpu')
         if model and testModel(model):
             self.model = torch.load(model).to(
                 self.device)  # type:PolicyValueNet

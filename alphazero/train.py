@@ -170,8 +170,8 @@ class TrainModel:
             # 判断游戏是否结束
             is_over, winner = self.chess_board.is_game_over()
             if is_over:
-                if winner is not None:
-                    z_list = [1 if i == winner else -1 for i in players]
+                if winner != 0:
+                    z_list = [1 if i == winner else -1 for i in players]  # TODO 结合一下available points
                 else:
                     z_list = [0]*len(players)
                 break

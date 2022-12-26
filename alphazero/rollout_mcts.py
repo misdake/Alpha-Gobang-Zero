@@ -82,6 +82,6 @@ class RolloutMCTS:
             board.do_action(action)
 
         # 计算 Value，平局为 0，当前玩家胜利则为 1, 输为 -1
-        if winner is not None:
+        if winner != 0:
             return 1 if winner == current_player else -1
         return 0

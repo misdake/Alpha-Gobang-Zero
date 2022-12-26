@@ -1,6 +1,40 @@
-from utils.model_summary import print_model_summary
+from alphazero.bubble_board import BubbleBoard
 
-# print_model_summary('model\\history\\best_policy_value_net_4400.pth')
+board = BubbleBoard(board_len=5)
 
-import utils.draw_game
-# import utils.draw_model
+
+board.do_action_print((0, 1))
+board.do_action_print((3, 3))
+board.do_action_print((0, 1))
+board.do_action_print((3, 3))
+
+board.do_action_print((0, 0))
+board.do_action_print((4, 4))
+board.do_action_print((0, 0))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))
+board.do_action_print((0, 1))
+board.do_action_print((4, 4))

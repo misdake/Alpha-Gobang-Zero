@@ -68,7 +68,7 @@ class AlphaZeroMCTS:
                     p = 0.75*p + 0.25 * \
                         np.random.dirichlet(0.03*np.ones(len(p)))
                 node.expand(zip(board.available_actions, p))
-            elif winner is not None:
+            elif winner != 0:
                 value = 1 if winner == board.current_player else -1
             else:
                 value = 0

@@ -63,11 +63,13 @@ class AIThread(QThread):
         self.isUseGPU = is_use_gpu
         self.device = torch.device('cuda:0' if self.isUseGPU and cuda.is_available() else 'cpu')
         if model and testModel(model):
-            self.model = torch.load(model).to(
-                self.device)  # type:PolicyValueNet
+            print('model loaded')
+            self.model = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet
             self.model.set_device(is_use_gpu=self.isUseGPU)
             self.model.eval()
             self.mcts = AlphaZeroMCTS(self.model, c_puct, n_iters)
         else:
+            print('model not loaded')
             self.model = None
             self.mcts = RolloutMCTS(c_puct, n_iters)
+            exit(-1)

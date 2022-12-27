@@ -12,7 +12,7 @@ SelfPlayData = namedtuple(
 class SelfPlayDataSet(Dataset):
     """ 自我博弈数据集类，每个样本为元组 `(feature_planes, pi, z)` """
 
-    def __init__(self, board_len=9):
+    def __init__(self, board_len=5):
         super().__init__()
         self.__data_deque = deque(maxlen=10000)
         self.board_len = board_len

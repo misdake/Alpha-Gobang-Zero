@@ -14,7 +14,7 @@ class BubbleBoard:
     EMPTY = 0
     BLACK = 1
 
-    def __init__(self, board_len=5, n_feature_planes=4):
+    def __init__(self, board_len=5, n_feature_planes=2):
         """
         Parameters
         ----------
@@ -66,6 +66,8 @@ class BubbleBoard:
         action: int
             落子位置，范围为 `[0, board_len^2 -1]`
         """
+
+        self.action_len += 1
 
         expand = False
         if self.state.get(action, self.EMPTY) == self.EMPTY:  # 空位置
@@ -169,8 +171,6 @@ class BubbleBoard:
             * 如果没分出胜负，则为 `0`
         """
 
-        # 要不要考虑到步数强制结束？ -> 外部考虑，board只管棋盘
-
         if len(self.white_available_points) == self.cell_len:
             return True, self.WHITE
         elif len(self.black_available_points) == self.cell_len:
@@ -178,16 +178,23 @@ class BubbleBoard:
         else:
             return False, 0
 
-    def get_state_reward(self) -> float:
+    def is_game_over_with_limit(self, max_action=100) -> Tuple[bool, int]:
+        is_over, winner = self.is_game_over()
+        if self.action_len > max_action:
+            is_over = True
+            winner = 0
+        return is_over, winner
+
+    def get_state_reward(self, player) -> float:
         white = self.cell_len - len(self.black_available_points)
         black = self.cell_len - len(self.white_available_points)
         # empty = self.cell_len - white - black
         self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要
         enemy_factor = 1.0 - self_factor
-        if self.current_player == self.WHITE:
-            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
-        elif self.current_player == self.BLACK:
-            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
+        if player == self.WHITE:
+            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / (white + black)
+        elif player == self.BLACK:
+            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
 
     def get_feature_planes(self) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`
@@ -198,22 +205,16 @@ class BubbleBoard:
             特征平面图像
         """
         n = self.board_len
-        feature_planes = torch.zeros((self.n_feature_planes, n ** 2))
-        # 最后一张图像代表当前玩家颜色
-        # feature_planes[-1] = self.current_player
+        feature_planes = torch.zeros((2, n ** 2))
         # 添加历史信息
-        if self.state:
-            actions = np.array(list(self.state.keys()))[::-1]
-            players = np.array(list(self.state.values()))[::-1]
-            Xt = actions[players == self.current_player]
-            Yt = actions[players != self.current_player]
-            for i in range((self.n_feature_planes - 1) // 2):
-                if i < len(Xt):
-                    feature_planes[2 * i, Xt[i:]] = 1
-                if i < len(Yt):
-                    feature_planes[2 * i + 1, Yt[i:]] = 1
+        for i in range(n**2):
+            cell_state = self.state.get(i, self.EMPTY)
+            if np.sign(cell_state) == self.current_player:
+                feature_planes[0, i] = abs(cell_state)
+            elif np.sign(cell_state) == -self.current_player:
+                feature_planes[1, i] = -abs(cell_state)
 
-        return feature_planes.view(self.n_feature_planes, n, n)
+        return feature_planes.view(2, n, n)
 
     def print(self, highlight: tuple = None):
         print(' +-', end='')
@@ -237,4 +238,3 @@ class BubbleBoard:
                 else:
                     print('    ', end='')
             print()
-        print()

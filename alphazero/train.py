@@ -6,12 +6,12 @@ import traceback
 
 import torch
 import torch.nn.functional as F
-from torch import nn, optim, cuda
+from torch import nn, optim
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.data import DataLoader
 
 from .alpha_zero_mcts import AlphaZeroMCTS
-from .chess_board import ChessBoard
+from .bubble_board import BubbleBoard
 from .policy_value_net import PolicyValueNet
 from .self_play_dataset import SelfPlayData, SelfPlayDataSet
 
@@ -66,8 +66,8 @@ class PolicyValueLoss(nn.Module):
 class TrainModel:
     """ 训练模型 """
 
-    def __init__(self, board_len=9, lr=0.01, n_self_plays=1500, n_mcts_iters=500,
-                 n_feature_planes=4, batch_size=500, start_train_size=500, check_frequency=100,
+    def __init__(self, board_len=5, lr=0.01, n_self_plays=1500, n_mcts_iters=500,
+                 n_feature_planes=2, batch_size=500, start_train_size=500, check_frequency=100,
                  n_test_games=10, c_puct=4, is_save_game=False, **kwargs):
         """
         Parameters
@@ -116,9 +116,8 @@ class TrainModel:
         self.is_save_game = is_save_game
         self.check_frequency = check_frequency
         self.start_train_size = start_train_size
-        self.device = torch.device(
-            'cuda:0' if is_use_gpu and cuda.is_available() else 'cpu')
-        self.chess_board = ChessBoard(board_len, n_feature_planes)
+        self.device = torch.device('cpu')
+        self.bubble_board = BubbleBoard(board_len, n_feature_planes)
 
         # 创建策略-价值网络和蒙特卡洛搜索树
         self.policy_value_net = self.__get_policy_value_net(board_len)
@@ -152,28 +151,48 @@ class TrainModel:
         """
         # 初始化棋盘和数据容器
         self.policy_value_net.eval()
-        self.chess_board.clear_board()
+        board = self.bubble_board
+        board.clear_board()
         pi_list, feature_planes_list, players = [], [], []
-        action_list = []
+        action_list, z_list = [], []
 
         # 开始一局游戏
         while True:
-            action, pi = self.mcts.get_action(self.chess_board)
+            player = board.current_player
+            curr_reward = board.get_state_reward(player)
+            action, pi = self.mcts.get_action(board)
+
+            # if board.action_len % 1 == 0:
+            #     board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
 
             # 保存每一步的数据
-            feature_planes_list.append(self.chess_board.get_feature_planes())
-            players.append(self.chess_board.current_player)
+            feature_planes_list.append(board.get_feature_planes())
+            players.append(player)
             action_list.append(action)
             pi_list.append(pi)
-            self.chess_board.do_action(action)
+            board.do_action(action)
 
             # 判断游戏是否结束
-            is_over, winner = self.chess_board.is_game_over()
+            is_over, winner = board.is_game_over_with_limit()
+
+            # 记录状态价值
+            if winner != 0:
+                next_reward = 5 if winner == player else -5  # 赢了有额外的5点奖励
+                next_reward += board.get_state_reward(player)
+            else:
+                next_reward = board.get_state_reward(player)
+            action_reward = next_reward - curr_reward
+            z_list.append(action_reward)
+
+            if player > 0:
+                print('+', end='')
+            else:
+                print('-', end='')
+            print(f'{action}', end='')
+
+            # print()
+
             if is_over:
-                if winner != 0:
-                    z_list = [1 if i == winner else -1 for i in players]  # TODO 结合一下available points
-                else:
-                    z_list = [0] * len(players)
                 break
 
         # 重置根节点
@@ -251,14 +270,14 @@ class TrainModel:
         n_wins = 0
         for i in range(self.n_test_games):
             print(f'🩺 正在测试当前模型... {i + 1}/{self.n_test_games}')
-            self.chess_board.clear_board()
+            self.bubble_board.clear_board()
             self.mcts.reset_root()
             mcts.reset_root()
             while True:
                 # 当前模型走一步
                 is_over, winner = self.__do_mcts_action(self.mcts)
                 if is_over:
-                    n_wins += int(winner == ChessBoard.BLACK)
+                    n_wins += int(winner == BubbleBoard.BLACK)
                     break
                 # 历史最优模型走一步
                 is_over, winner = self.__do_mcts_action(mcts)
@@ -306,9 +325,9 @@ class TrainModel:
 
     def __do_mcts_action(self, mcts):
         """ 获取动作 """
-        action = mcts.get_action(self.chess_board)
-        self.chess_board.do_action(action)
-        is_over, winner = self.chess_board.is_game_over()
+        action = mcts.get_action(self.bubble_board)
+        self.bubble_board.do_action(action)
+        is_over, winner = self.bubble_board.is_game_over()
         return is_over, winner
 
     def __get_policy_value_net(self, board_len=9):
@@ -327,7 +346,7 @@ class TrainModel:
             net = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet
         else:
             print(f'💎 初始化模型 {model} ...\n')
-            net = PolicyValueNet(n_feature_planes=self.chess_board.n_feature_planes,
+            net = PolicyValueNet(n_feature_planes=self.bubble_board.n_feature_planes,
                                  board_len=board_len).to(self.device)
 
         return net

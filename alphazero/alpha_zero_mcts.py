@@ -3,7 +3,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from .chess_board import ChessBoard
+from .bubble_board import BubbleBoard
 from .node import Node
 from .policy_value_net import PolicyValueNet
 
@@ -33,12 +33,12 @@ class AlphaZeroMCTS:
         self.policy_value_net = policy_value_net
         self.root = Node(prior_prob=1, parent=None)
 
-    def get_action(self, chess_board: ChessBoard) -> Union[Tuple[int, np.ndarray], int]:
+    def get_action(self, bubble_board: BubbleBoard) -> Union[Tuple[int, np.ndarray], int]:
         """ 根据当前局面返回下一步动作
 
         Parameters
         ----------
-        chess_board: ChessBoard
+        bubble_board: BubbleBoard
             棋盘
 
         Returns
@@ -51,7 +51,7 @@ class AlphaZeroMCTS:
         """
         for i in range(self.n_iters):
             # 拷贝棋盘
-            board = chess_board.copy()
+            board = bubble_board.copy()
 
             # 如果没有遇到叶节点，就一直向下搜索并更新棋盘
             node = self.root
@@ -60,8 +60,12 @@ class AlphaZeroMCTS:
                 board.do_action(action)
 
             # 判断游戏是否结束，如果没结束就拓展叶节点
-            is_over, winner = board.is_game_over()
+            is_over, winner = board.is_game_over_with_limit()
+
             p, value = self.policy_value_net.predict(board)
+            player = board.current_player
+
+            value = board.get_state_reward(player)
             if not is_over:
                 # 添加狄利克雷噪声
                 if self.is_self_play:
@@ -69,17 +73,16 @@ class AlphaZeroMCTS:
                         np.random.dirichlet(0.03*np.ones(len(p)))
                 node.expand(zip(board.available_actions, p))
             elif winner != 0:
-                value = 1 if winner == board.current_player else -1
-            else:
-                value = 0
+                value = 5 if winner == player else -5  # 赢了有额外的5点奖励
+                value += board.get_state_reward(player)
 
             # 反向传播
             node.backup(-value)
 
         # 计算 π，在自我博弈状态下：游戏的前三十步，温度系数为 1，后面的温度系数趋于无穷小
-        T = 1 if self.is_self_play and len(chess_board.state) <= 30 else 1e-3
+        t = 1 if self.is_self_play and len(bubble_board.state) <= 30 else 1e-3
         visits = np.array([i.N for i in self.root.children.values()])
-        pi_ = self.__getPi(visits, T)
+        pi_ = self.__getPi(visits, t)
 
         # 根据 π 选出动作及其对应节点
         actions = list(self.root.children.keys())
@@ -87,7 +90,7 @@ class AlphaZeroMCTS:
 
         if self.is_self_play:
             # 创建维度为 board_len^2 的 π
-            pi = np.zeros(chess_board.board_len**2)
+            pi = np.zeros(bubble_board.board_len**2)
             pi[actions] = pi_
             # 更新根节点
             self.root = self.root.children[action]

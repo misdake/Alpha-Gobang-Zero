@@ -3,7 +3,7 @@ import torch
 from torch import nn, cuda
 from torch.nn import functional as F
 
-from .chess_board import ChessBoard
+from .bubble_board import BubbleBoard
 
 
 class ConvBlock(nn.Module):
@@ -106,7 +106,7 @@ class ValueHead(nn.Module):
 class PolicyValueNet(nn.Module):
     """ 策略价值网络 """
 
-    def __init__(self, board_len=5, n_feature_planes=4):
+    def __init__(self, board_len=5, n_feature_planes=2):
         """
         Parameters
         ----------
@@ -148,23 +148,23 @@ class PolicyValueNet(nn.Module):
         value = self.value_head(x)
         return p_hat, value
 
-    def predict(self, chess_board: ChessBoard):
+    def predict(self, bubble_board: BubbleBoard):
         """ 获取当前局面上所有可用 `action` 和他对应的先验概率 `P(s, a)`，以及局面的 `value`
 
         Parameters
         ----------
-        chess_board: ChessBoard
+        bubble_board: BubbleBoard
             棋盘
 
         Returns
         -------
-        probs: `np.ndarray` of shape `(len(chess_board.available_actions), )`
+        probs: `np.ndarray` of shape `(len(bubble_board.available_actions), )`
             当前局面上所有可用 `action` 对应的先验概率 `P(s, a)`
 
         value: float
             当前局面的估值
         """
-        feature_planes = chess_board.get_feature_planes().to(self.device)
+        feature_planes = bubble_board.get_feature_planes().to(self.device)
         feature_planes.unsqueeze_(0)
         p_hat, value = self(feature_planes)
 
@@ -172,7 +172,7 @@ class PolicyValueNet(nn.Module):
         p = torch.exp(p_hat).flatten()
 
         # 只取可行的落点
-        p = p[chess_board.available_actions].cpu().detach().numpy()
+        p = p[bubble_board.available_actions].cpu().detach().numpy()
 
         return p, value[0].item()
 

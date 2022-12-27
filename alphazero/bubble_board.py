@@ -77,6 +77,8 @@ class BubbleBoard:
             if self.current_player == self.BLACK:
                 self.white_available_points.remove(action)
         else:
+            if np.sign(self.state[action]) != self.current_player:
+                print('!!!!!!!!!!!!!!!!!')
             self.state[action] += np.sign(self.state[action])  # 加一个泡泡，经过外层available处理一定是合法的
             if abs(self.state[action]) == 4:
                 expand = True  # 触发分裂
@@ -120,8 +122,8 @@ class BubbleBoard:
             print("?")
 
     def _refresh_available_points(self):
-        self.black_available_points = []
-        self.white_available_points = []
+        self.black_available_points.clear()
+        self.white_available_points.clear()
         for i in range(self.cell_len):
             state = self.state.get(i, self.EMPTY)
             if state >= 0:
@@ -227,14 +229,22 @@ class BubbleBoard:
                 index = i * self.board_len + j
                 state = self.state.get(index, self.EMPTY)
                 if highlight is not None and i == highlight[0] and j == highlight[1]:
-                    print('>', end='')
+                    print(' >', end='')
                 else:
-                    print(' ', end='')
+                    print('  ', end='')
 
-                if state > 0:
-                    print(f'  {state} ', end='')
-                elif state < 0:
-                    print(f' {state} ', end='')
-                else:
-                    print('    ', end='')
+                if state == 0:
+                    print('   ', end='')
+                elif state == 1:
+                    print(' x ', end='')
+                elif state == 2:
+                    print('xx ', end='')
+                elif state == 3:
+                    print('xxx', end='')
+                elif state == -1:
+                    print(' + ', end='')
+                elif state == -2:
+                    print('++ ', end='')
+                elif state == -3:
+                    print('+++', end='')
             print()

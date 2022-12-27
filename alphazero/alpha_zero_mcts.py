@@ -60,7 +60,10 @@ class AlphaZeroMCTS:
                 board.do_action(action)
 
             # 判断游戏是否结束，如果没结束就拓展叶节点
-            is_over, winner = board.is_game_over_with_limit()
+            if self.is_self_play:
+                is_over, winner = board.is_game_over_with_limit()
+            else:
+                is_over, winner = board.is_game_over()
 
             p, value = self.policy_value_net.predict(board)
             player = board.current_player
@@ -69,8 +72,8 @@ class AlphaZeroMCTS:
             if not is_over:
                 # 添加狄利克雷噪声
                 if self.is_self_play:
-                    p = 0.75*p + 0.25 * \
-                        np.random.dirichlet(0.03*np.ones(len(p)))
+                    p = 0.75 * p + 0.25 * \
+                        np.random.dirichlet(0.03 * np.ones(len(p)))
                 node.expand(zip(board.available_actions, p))
             elif winner != 0:
                 value = 5 if winner == player else -5  # 赢了有额外的5点奖励
@@ -90,7 +93,7 @@ class AlphaZeroMCTS:
 
         if self.is_self_play:
             # 创建维度为 board_len^2 的 π
-            pi = np.zeros(bubble_board.board_len**2)
+            pi = np.zeros(bubble_board.board_len ** 2)
             pi[actions] = pi_
             # 更新根节点
             self.root = self.root.children[action]
@@ -103,9 +106,9 @@ class AlphaZeroMCTS:
     def __getPi(self, visits, T) -> np.ndarray:
         """ 根据节点的访问次数计算 π """
         # pi = visits**(1/T) / np.sum(visits**(1/T)) 会出现标量溢出问题，所以使用对数压缩
-        x = 1/T * np.log(visits + 1e-11)
+        x = 1 / T * np.log(visits + 1e-11)
         x = np.exp(x - x.max())
-        pi = x/x.sum()
+        pi = x / x.sum()
         return pi
 
     def reset_root(self):

@@ -18,6 +18,7 @@ from .self_play_dataset import SelfPlayData, SelfPlayDataSet
 
 def exception_handler(train_func):
     """ 异常处理装饰器 """
+
     def wrapper(train_pipe_line, *args, **kwargs):
         try:
             train_func(train_pipe_line)
@@ -57,7 +58,7 @@ class PolicyValueLoss(nn.Module):
             最终的游戏结果相对每一个玩家的奖赏
         """
         value_loss = F.mse_loss(value, z)
-        policy_loss = -torch.sum(pi*p_hat, dim=1).mean()
+        policy_loss = -torch.sum(pi * p_hat, dim=1).mean()
         loss = value_loss + policy_loss
         return loss
 
@@ -67,7 +68,7 @@ class TrainModel:
 
     def __init__(self, board_len=9, lr=0.01, n_self_plays=1500, n_mcts_iters=500,
                  n_feature_planes=4, batch_size=500, start_train_size=500, check_frequency=100,
-                 n_test_games=10, c_puct=4, is_use_gpu=True, is_save_game=False, **kwargs):
+                 n_test_games=10, c_puct=4, is_save_game=False, **kwargs):
         """
         Parameters
         ----------
@@ -108,7 +109,6 @@ class TrainModel:
             是否保存自对弈的棋谱
         """
         self.c_puct = c_puct
-        self.is_use_gpu = is_use_gpu
         self.batch_size = batch_size
         self.n_self_plays = n_self_plays
         self.n_test_games = n_test_games
@@ -173,7 +173,7 @@ class TrainModel:
                 if winner != 0:
                     z_list = [1 if i == winner else -1 for i in players]  # TODO 结合一下available points
                 else:
-                    z_list = [0]*len(players)
+                    z_list = [0] * len(players)
                 break
 
         # 重置根节点
@@ -191,7 +191,7 @@ class TrainModel:
     def train(self):
         """ 训练模型 """
         for i in range(self.n_self_plays):
-            print(f'🏹 正在进行第 {i+1} 局自我博弈游戏...')
+            print(f'🏹 正在进行第 {i + 1} 局自我博弈游戏...')
             self.dataset.append(self.__self_play())
 
             # 如果数据集中的数据量大于 start_train_size 就进行一次训练
@@ -224,7 +224,7 @@ class TrainModel:
                 print(f"🚩 train_loss = {loss.item():<10.5f}\n")
 
             # 测试模型
-            if (i+1) % self.check_frequency == 0:
+            if (i + 1) % self.check_frequency == 0:
                 self.__test_model()
 
     def __test_model(self):
@@ -239,9 +239,9 @@ class TrainModel:
             return
 
         # 载入历史最优模型
-        best_model = torch.load(model_path)  # type:PolicyValueNet
+        best_model = torch.load(model_path, map_location=torch.device('cpu'))  # type:PolicyValueNet
         best_model.eval()
-        best_model.set_device(self.is_use_gpu)
+        best_model.set_device()
         mcts = AlphaZeroMCTS(best_model, self.c_puct, self.n_mcts_iters)
         self.mcts.set_self_play(False)
         self.policy_value_net.eval()
@@ -250,7 +250,7 @@ class TrainModel:
         print('🩺 正在测试当前模型...')
         n_wins = 0
         for i in range(self.n_test_games):
-            print(f'🩺 正在测试当前模型... {i+1}/{self.n_test_games}')
+            print(f'🩺 正在测试当前模型... {i + 1}/{self.n_test_games}')
             self.chess_board.clear_board()
             self.mcts.reset_root()
             mcts.reset_root()
@@ -266,7 +266,7 @@ class TrainModel:
                     break
 
         # 如果胜率大于 55%，就保存当前模型为最优模型
-        win_prob = n_wins/self.n_test_games
+        win_prob = n_wins / self.n_test_games
         if win_prob > 0.55:
             torch.save(self.mcts.policy_value_net, model_path)
             print(f'🥇 保存当前模型为最优模型，当前模型胜率为：{win_prob:.1%}\n')
@@ -304,7 +304,6 @@ class TrainModel:
             with open(f'log/{game_name}.json', 'w', encoding='utf-8') as f:
                 json.dump(self.games, f)
 
-
     def __do_mcts_action(self, mcts):
         """ 获取动作 """
         action = mcts.get_action(self.chess_board)
@@ -326,11 +325,10 @@ class TrainModel:
         if os.path.exists(model):
             print(f'💎 载入模型 {model} ...\n')
             net = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet
-            net.set_device(self.is_use_gpu)
         else:
             print(f'💎 初始化模型 {model} ...\n')
             net = PolicyValueNet(n_feature_planes=self.chess_board.n_feature_planes,
-                                 is_use_gpu=self.is_use_gpu, board_len=board_len).to(self.device)
+                                 board_len=board_len).to(self.device)
 
         return net
 

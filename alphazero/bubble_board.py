@@ -32,6 +32,7 @@ class BubbleBoard:
         self.state = OrderedDict()
 
         # 初始化一下，不然python不开心
+        self.action_len = 0
         self.current_player = self.BLACK
         self.black_available_points = list(range(self.cell_len))
         self.white_available_points = list(range(self.cell_len))
@@ -46,6 +47,7 @@ class BubbleBoard:
 
     def clear_board(self):
         """ 清空棋盘 """
+        self.action_len = 0
         self.state.clear()
         self.current_player = self.BLACK
         self.black_available_points = list(range(self.cell_len))
@@ -66,14 +68,14 @@ class BubbleBoard:
         """
 
         expand = False
-        if self.state.get(action, self.EMPTY) == self.EMPTY:
+        if self.state.get(action, self.EMPTY) == self.EMPTY:  # 空位置
             self.state[action] = self.current_player  # 设置泡泡的量为1
             if self.current_player == self.WHITE:
                 self.black_available_points.remove(action)
             if self.current_player == self.BLACK:
                 self.white_available_points.remove(action)
         else:
-            self.state[action] += np.sign(self.state[action])  # 加一个泡泡
+            self.state[action] += np.sign(self.state[action])  # 加一个泡泡，经过外层available处理一定是合法的
             if abs(self.state[action]) == 4:
                 expand = True  # 触发分裂
 
@@ -167,7 +169,7 @@ class BubbleBoard:
             * 如果没分出胜负，则为 `0`
         """
 
-        # TODO 要不要考虑到步数强制结束？
+        # 要不要考虑到步数强制结束？ -> 外部考虑，board只管棋盘
 
         if len(self.white_available_points) == self.cell_len:
             return True, self.WHITE
@@ -175,6 +177,17 @@ class BubbleBoard:
             return True, self.BLACK
         else:
             return False, 0
+
+    def get_state_reward(self) -> float:
+        white = self.cell_len - len(self.black_available_points)
+        black = self.cell_len - len(self.white_available_points)
+        # empty = self.cell_len - white - black
+        self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要
+        enemy_factor = 1.0 - self_factor
+        if self.current_player == self.WHITE:
+            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
+        elif self.current_player == self.BLACK:
+            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
 
     def get_feature_planes(self) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`
@@ -225,9 +238,3 @@ class BubbleBoard:
                     print('    ', end='')
             print()
         print()
-
-
-class ColorError(ValueError):
-
-    def __init__(self, *args: object) -> None:
-        super().__init__(*args)

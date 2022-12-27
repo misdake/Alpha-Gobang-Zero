@@ -65,7 +65,7 @@ class AIThread(QThread):
         if model and testModel(model):
             print('model loaded')
             self.model = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet
-            self.model.set_device(is_use_gpu=self.isUseGPU)
+            self.model.set_device()
             self.model.eval()
             self.mcts = AlphaZeroMCTS(self.model, c_puct, n_iters)
         else:

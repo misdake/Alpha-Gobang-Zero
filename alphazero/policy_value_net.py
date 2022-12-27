@@ -106,7 +106,7 @@ class ValueHead(nn.Module):
 class PolicyValueNet(nn.Module):
     """ 策略价值网络 """
 
-    def __init__(self, board_len=9, n_feature_planes=6, is_use_gpu=True):
+    def __init__(self, board_len=5, n_feature_planes=4):
         """
         Parameters
         ----------
@@ -119,7 +119,7 @@ class PolicyValueNet(nn.Module):
         super().__init__()
         self.board_len = board_len
         self.n_feature_planes = n_feature_planes
-        self.set_device(is_use_gpu)
+        self.device = torch.device('cpu')
         self.conv = ConvBlock(n_feature_planes, 128, 3, padding=1)
         self.residues = nn.Sequential(
             *[ResidueBlock(128, 128) for i in range(4)])  # 能够传播的范围
@@ -172,14 +172,10 @@ class PolicyValueNet(nn.Module):
         p = torch.exp(p_hat).flatten()
 
         # 只取可行的落点
-        if self.is_use_gpu:
-            p = p[chess_board.available_actions].cpu().detach().numpy()
-        else:
-            p = p[chess_board.available_actions].detach().numpy()
+        p = p[chess_board.available_actions].cpu().detach().numpy()
 
         return p, value[0].item()
 
-    def set_device(self, is_use_gpu: bool):
+    def set_device(self):
         """ 设置神经网络运行设备 """
-        self.is_use_gpu = True if is_use_gpu and cuda.is_available() else False
-        self.device = torch.device('cuda:0' if is_use_gpu and cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')

@@ -51,7 +51,7 @@ class AlphaZeroMCTS:
             执行动作空间中每个动作的概率，只在 `is_self_play=True` 模式下返回
         """
         if self.is_self_play:
-            depth_limit = max(100, bubble_board.action_len + 20)  # 训练时，最多探索10层，限制最大深度100保证结束
+            depth_limit = max(100, bubble_board.action_len + 20)  # 训练时，最多探索20层，限制最大深度100保证结束
         else:
             depth_limit = bubble_board.action_len + 20  # 运行时，最多探索20层，不限最大深度
 

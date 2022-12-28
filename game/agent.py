@@ -21,7 +21,7 @@ def test_model(model: str):
 class Agent:
     """ AI """
 
-    def __init__(self, bubble_board: BubbleBoard, model: str, c_puct=5.0, n_iters=500):
+    def __init__(self, bubble_board: BubbleBoard, model: str, c_puct=5.0, n_iters=100):
         """
         Parameters
         ----------
@@ -39,7 +39,6 @@ class Agent:
         """
         self.bubble_board = bubble_board
         self.c_puct = c_puct
-        self.n_iters = n_iters
         self.device = torch.device('cpu')
         if model and test_model(model):
             self.model = torch.load(model, map_location=torch.device('cpu')).to(self.device)  # type:PolicyValueNet

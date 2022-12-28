@@ -122,15 +122,12 @@ class TrainModel:
 
         # 创建策略-价值网络和蒙特卡洛搜索树
         self.policy_value_net = self.__get_policy_value_net(board_len)
-        self.mcts = AlphaZeroMCTS(
-            self.policy_value_net, c_puct=c_puct, n_iters=n_mcts_iters, is_self_play=True)
+        self.mcts = AlphaZeroMCTS(self.policy_value_net, c_puct=c_puct, n_iters=n_mcts_iters, is_self_play=True)
 
         # 创建优化器和损失函数
-        self.optimizer = optim.Adam(
-            self.policy_value_net.parameters(), lr=lr, weight_decay=1e-4)
+        self.optimizer = optim.Adam(self.policy_value_net.parameters(), lr=lr, weight_decay=1e-4)
         self.criterion = PolicyValueLoss()
-        self.lr_scheduler = MultiStepLR(
-            self.optimizer, [1500, 2500], gamma=0.1)
+        self.lr_scheduler = MultiStepLR(self.optimizer, [100, 200, 300], gamma=0.1)
 
         # 创建数据集
         self.dataset = SelfPlayDataSet(board_len)
@@ -242,59 +239,11 @@ class TrainModel:
                 print(f"🚩 train_loss = {loss.item():<10.5f}\n")
 
                 if train_count % 50 == 0:
-                    model_path = f'model/checkpoint/saved_bubble_reward_{i+1}.pth'
+                    model_path = f'model/checkpoint/saved_bubble_reward_{train_count}.pth'
                     torch.save(self.mcts.policy_value_net, model_path)
             # 测试模型
             # if (i + 1) % self.check_frequency == 0:
             #     self.__test_model()
-
-    def __test_model(self):
-        """ 测试模型 """
-        os.makedirs('model', exist_ok=True)
-
-        model_path = 'model/best_policy_value_net.pth'
-
-        # 如果最佳模型不存在保存当前模型为最佳模型
-        if not os.path.exists(model_path):
-            torch.save(self.policy_value_net, model_path)
-            return
-
-        # 载入历史最优模型
-        best_model = torch.load(model_path, map_location=torch.device('cpu'))  # type:PolicyValueNet
-        best_model.eval()
-        best_model.set_device()
-        mcts = AlphaZeroMCTS(best_model, self.c_puct, self.n_mcts_iters)
-        self.mcts.set_self_play(False)
-        self.policy_value_net.eval()
-
-        # 开始比赛
-        print('🩺 正在测试当前模型...')
-        n_wins = 0
-        for i in range(self.n_test_games):
-            print(f'🩺 正在测试当前模型... {i + 1}/{self.n_test_games}')
-            self.bubble_board.clear_board()
-            self.mcts.reset_root()
-            mcts.reset_root()
-            while True:
-                # 当前模型走一步
-                is_over, winner = self.__do_mcts_action(self.mcts)
-                if is_over:
-                    n_wins += int(winner == BubbleBoard.BLACK)
-                    break
-                # 历史最优模型走一步
-                is_over, winner = self.__do_mcts_action(mcts)
-                if is_over:
-                    break
-
-        # 如果胜率大于 55%，就保存当前模型为最优模型
-        win_prob = n_wins / self.n_test_games
-        if win_prob > 0.55:
-            torch.save(self.mcts.policy_value_net, model_path)
-            print(f'🥇 保存当前模型为最优模型，当前模型胜率为：{win_prob:.1%}\n')
-        else:
-            print(f'🎃 保持历史最优模型不变，当前模型胜率为：{win_prob:.1%}\n')
-
-        self.mcts.set_self_play(True)
 
     def save_model(self, model_name: str, loss_name: str, game_name: str):
         """ 保存模型

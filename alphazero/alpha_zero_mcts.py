@@ -1,4 +1,5 @@
 # coding: utf-8
+import math
 from typing import Tuple, Union
 
 import numpy as np
@@ -49,6 +50,11 @@ class AlphaZeroMCTS:
         pi: `np.ndarray` of shape `(board_len^2, )`
             执行动作空间中每个动作的概率，只在 `is_self_play=True` 模式下返回
         """
+        if self.is_self_play:
+            depth_limit = max(100, bubble_board.action_len + 20)  # 训练时，最多探索10层，限制最大深度100保证结束
+        else:
+            depth_limit = bubble_board.action_len + 20  # 运行时，最多探索20层，不限最大深度
+
         for i in range(self.n_iters):
             # 拷贝棋盘
             board = bubble_board.copy()
@@ -59,25 +65,24 @@ class AlphaZeroMCTS:
                 action, node = node.select()
                 board.do_action(action)
 
-            # 判断游戏是否结束，如果没结束就拓展叶节点
+            # 判断游戏是否结束或者深度受到限制，如果没结束就拓展叶节点
             if self.is_self_play:
-                is_over, winner = board.is_game_over_with_limit()
+                is_over, winner = board.is_game_over_with_limit(depth_limit)
             else:
                 is_over, winner = board.is_game_over()
 
             p, value = self.policy_value_net.predict(board)
             player = board.current_player
 
-            value = board.get_state_reward(player)
             if not is_over:
-                # 添加狄利克雷噪声
                 if self.is_self_play:
-                    p = 0.75 * p + 0.25 * \
-                        np.random.dirichlet(0.03 * np.ones(len(p)))
+                    noise = np.random.dirichlet(0.05 * np.ones(len(p)))  # 和为1，一般某一项会占据大概率
+                    p = 0.75 * p + 0.25 * noise
                 node.expand(zip(board.available_actions, p))
+                value = math.tanh(board.get_state_reward(player))
             elif winner != 0:
-                value = 5 if winner == player else -5  # 赢了有额外的5点奖励
-                value += board.get_state_reward(player)
+                value = 1 if winner == player else -1
+            # 平局就用value
 
             # 反向传播
             node.backup(-value)

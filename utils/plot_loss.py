@@ -4,7 +4,7 @@ import json
 
 plt.style.use(['matlab'])
 
-with open('..\\log\\train_losses.json', encoding='utf-8') as f:
+with open('../model/history/cell_reward_100_losses.json', encoding='utf-8') as f:
     loss = [i[1] for i in json.load(f)]
 print(len(loss))
 fig = plt.figure('误差曲线')

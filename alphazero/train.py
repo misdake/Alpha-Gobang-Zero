@@ -1,5 +1,6 @@
 # coding:utf-8
 import json
+import math
 import os
 import time
 import traceback
@@ -159,11 +160,10 @@ class TrainModel:
         # 开始一局游戏
         while True:
             player = board.current_player
-            curr_reward = board.get_state_reward(player)
+            # curr_reward = board.get_state_reward(player)
             action, pi = self.mcts.get_action(board)
 
-            # if board.action_len % 1 == 0:
-            #     board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
+            # board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
 
             # 保存每一步的数据
             feature_planes_list.append(board.get_feature_planes())
@@ -176,23 +176,21 @@ class TrainModel:
             is_over, winner = board.is_game_over_with_limit()
 
             # 记录状态价值
-            if winner != 0:
-                next_reward = 5 if winner == player else -5  # 赢了有额外的5点奖励
-                next_reward += board.get_state_reward(player)
-            else:
-                next_reward = board.get_state_reward(player)
-            action_reward = next_reward - curr_reward
-            z_list.append(action_reward)
+            next_reward = board.get_state_reward(player)
+            # action_reward = next_reward - curr_reward
+
+            z_list.append(math.tanh(next_reward))
 
             if player > 0:
                 print('+', end='')
             else:
                 print('-', end='')
-            print(f'{action}', end='')
-
-            # print()
+            print(f'{action}({next_reward:.3}) ', end='')
+            if board.action_len % 10 == 0:
+                print()
 
             if is_over:
+                print()
                 break
 
         # 重置根节点
@@ -208,6 +206,7 @@ class TrainModel:
 
     @exception_handler
     def train(self):
+        train_count = 0
         """ 训练模型 """
         for i in range(self.n_self_plays):
             print(f'🏹 正在进行第 {i + 1} 局自我博弈游戏...')
@@ -215,36 +214,39 @@ class TrainModel:
 
             # 如果数据集中的数据量大于 start_train_size 就进行一次训练
             if len(self.dataset) >= self.start_train_size:
-                data_loader = iter(DataLoader(
-                    self.dataset, self.batch_size, shuffle=True, drop_last=False))
-                print('💊 开始训练...')
+                data_loader = iter(DataLoader(self.dataset, self.batch_size, shuffle=True, drop_last=False))
+                print(f'💊 第 {train_count + 1} 次训练...')
+                train_count += 1
 
                 self.policy_value_net.train()
                 # 随机选出一批数据来训练，防止过拟合
                 feature_planes, pi, z = next(data_loader)
                 feature_planes = feature_planes.to(self.device)
                 pi, z = pi.to(self.device), z.to(self.device)
-                for _ in range(5):
-                    # 前馈
-                    p_hat, value = self.policy_value_net(feature_planes)
-                    # 梯度清零
-                    self.optimizer.zero_grad()
-                    # 计算损失
-                    loss = self.criterion(p_hat, pi, value.flatten(), z)
-                    # 误差反向传播
-                    loss.backward()
-                    # 更新参数
-                    self.optimizer.step()
-                    # 学习率退火
-                    self.lr_scheduler.step()
+
+                # 前馈
+                p_hat, value = self.policy_value_net(feature_planes)
+                # 梯度清零
+                self.optimizer.zero_grad()
+                # 计算损失
+                loss = self.criterion(p_hat, pi, value.flatten(), z)
+                # 误差反向传播
+                loss.backward()
+                # 更新参数
+                self.optimizer.step()
+                # 学习率退火
+                self.lr_scheduler.step()
 
                 # 记录误差
                 self.train_losses.append([i, loss.item()])
                 print(f"🚩 train_loss = {loss.item():<10.5f}\n")
 
+                if train_count % 50 == 0:
+                    model_path = f'model/checkpoint/saved_bubble_reward_{i+1}.pth'
+                    torch.save(self.mcts.policy_value_net, model_path)
             # 测试模型
-            if (i + 1) % self.check_frequency == 0:
-                self.__test_model()
+            # if (i + 1) % self.check_frequency == 0:
+            #     self.__test_model()
 
     def __test_model(self):
         """ 测试模型 """

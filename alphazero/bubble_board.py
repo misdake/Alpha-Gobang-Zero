@@ -32,10 +32,12 @@ class BubbleBoard:
         self.state = OrderedDict()
 
         # 初始化一下，不然python不开心
+        self.black_count = 1
+        self.white_count = 1
         self.action_len = 0
         self.current_player = self.BLACK
-        self.black_available_points = list(range(self.cell_len))
-        self.white_available_points = list(range(self.cell_len))
+        self.black_available_points = []
+        self.white_available_points = []
         self.available_actions = self.black_available_points
 
         # 重复的调用
@@ -50,8 +52,8 @@ class BubbleBoard:
         self.action_len = 0
         self.state.clear()
         self.current_player = self.BLACK
-        self.black_available_points = list(range(self.cell_len))
-        self.white_available_points = list(range(self.cell_len))
+        self.black_count = 1
+        self.white_count = 1
         self.available_actions = self.black_available_points
 
         self.state[0] = self.BLACK
@@ -68,6 +70,10 @@ class BubbleBoard:
         """
 
         self.action_len += 1
+        if self.current_player == self.WHITE:
+            self.white_count += 1
+        if self.current_player == self.BLACK:
+            self.black_count += 1
 
         expand = False
         if self.state.get(action, self.EMPTY) == self.EMPTY:  # 空位置
@@ -124,11 +130,15 @@ class BubbleBoard:
     def _refresh_available_points(self):
         self.black_available_points.clear()
         self.white_available_points.clear()
+        self.black_count = 0
+        self.white_count = 0
         for i in range(self.cell_len):
             state = self.state.get(i, self.EMPTY)
             if state >= 0:
+                self.black_count += abs(state)
                 self.black_available_points.append(i)
             if state <= 0:
+                self.white_count += abs(state)
                 self.white_available_points.append(i)
 
     def do_action_with_check(self, pos: tuple) -> bool:
@@ -182,21 +192,22 @@ class BubbleBoard:
 
     def is_game_over_with_limit(self, max_action=100) -> Tuple[bool, int]:
         is_over, winner = self.is_game_over()
-        if self.action_len > max_action:
+        if self.action_len >= max_action:
             is_over = True
             winner = 0
         return is_over, winner
 
     def get_state_reward(self, player) -> float:
-        white = self.cell_len - len(self.black_available_points)
-        black = self.cell_len - len(self.white_available_points)
-        # empty = self.cell_len - white - black
-        self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要
-        enemy_factor = 1.0 - self_factor
+        white = self.white_count
+        black = self.black_count
+        # self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要？
+        # enemy_factor = 1.0 - self_factor
+        self_factor = 0.0
+        enemy_factor = 0.0
         if player == self.WHITE:
-            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / (white + black)
+            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
         elif player == self.BLACK:
-            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
+            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
 
     def get_feature_planes(self) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`
@@ -242,9 +253,9 @@ class BubbleBoard:
                 elif state == 3:
                     print('xxx', end='')
                 elif state == -1:
-                    print(' + ', end='')
+                    print(' o ', end='')
                 elif state == -2:
-                    print('++ ', end='')
+                    print('oo ', end='')
                 elif state == -3:
-                    print('+++', end='')
+                    print('ooo', end='')
             print()

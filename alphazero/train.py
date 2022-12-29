@@ -127,7 +127,7 @@ class TrainModel:
         # 创建优化器和损失函数
         self.optimizer = optim.Adam(self.policy_value_net.parameters(), lr=lr, weight_decay=1e-4)
         self.criterion = PolicyValueLoss()
-        self.lr_scheduler = MultiStepLR(self.optimizer, [100, 200, 300], gamma=0.1)
+        self.lr_scheduler = MultiStepLR(self.optimizer, [100, 300, 500], gamma=0.1)
 
         # 创建数据集
         self.dataset = SelfPlayDataSet(board_len)
@@ -154,8 +154,13 @@ class TrainModel:
         pi_list, feature_planes_list, players = [], [], []
         action_list, z_list = [], []
 
+        board_history = [board.copy()] * (board.n_feature_planes // 2)
+
         # 开始一局游戏
         while True:
+            board_history.pop(0)
+            board_history.append(board.copy())
+
             player = board.current_player
             # curr_reward = board.get_state_reward(player)
             action, pi = self.mcts.get_action(board)
@@ -163,14 +168,15 @@ class TrainModel:
             # board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
 
             # 保存每一步的数据
-            feature_planes_list.append(board.get_feature_planes())
+            feature_plane = torch.cat(list(map(lambda h: h.get_feature_planes(player), board_history)))
+            feature_planes_list.append(feature_plane)
             players.append(player)
             action_list.append(action)
             pi_list.append(pi)
             board.do_action(action)
 
             # 判断游戏是否结束
-            is_over, winner = board.is_game_over_with_limit()
+            is_over, winner = board.is_game_over_with_limit(200)
 
             # 记录状态价值
             next_reward = board.get_state_reward(player)
@@ -182,12 +188,22 @@ class TrainModel:
                 print('+', end='')
             else:
                 print('-', end='')
-            print(f'{action}({next_reward:.3}) ', end='')
+            print(f'{action:02} ', end='')
             if board.action_len % 10 == 0:
                 print()
 
             if is_over:
                 print()
+
+                # TODO 暂时添加在这里，用于还原1和-1的v
+                # 改用传统棋类的方法设置value
+                if winner != 0:
+                    z_list = [1 if i == winner else -1 for i in players]
+                else:
+                    z_list = [0] * len(players)
+
+                print(f'winner {winner}')
+
                 break
 
         # 重置根节点

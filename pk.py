@@ -38,10 +38,10 @@ def pk(board: BubbleBoard, agent1: Agent, agent2: Agent) -> int:
             return winner
 
 
-def run(i: int, j: int):
+def run(i: int, j: int, i_iter=100, j_iter=100):
     board = BubbleBoard(board_len=5)
-    agent1 = Agent(board, f'model/{agents[i]}.pth')
-    agent2 = Agent(board, f'model/{agents[j]}.pth')
+    agent1 = Agent(board, f'model/{agents[i]}.pth', n_iters=i_iter)
+    agent2 = Agent(board, f'model/{agents[j]}.pth', n_iters=j_iter)
 
     # print(f'begin {i} {j}')
     winner = pk(board, agent1, agent2)
@@ -59,16 +59,23 @@ def run(i: int, j: int):
 
 
 def main():
-    n = 10
+    n = 20
 
+    # 单循环
     # for i in range(len(agents) - 1):
     #     for j in range(i + 1, len(agents)):
     #         for _ in range(n):
     #             futures.append(pool.submit(run, i, j))
 
-    for i in range(len(agents) - 1):
-        for _ in range(n):
-            futures.append(pool.submit(run, i, i + 1))
+    # 测试相邻的网络
+    # for i in range(len(agents) - 1):
+    #     for _ in range(n):
+    #         futures.append(pool.submit(run, i, i + 1))
+
+    for _ in range(n):
+        futures.append(pool.submit(run, 2, 3, 100, 200))
+    for _ in range(n):
+        futures.append(pool.submit(run, 3, 4, 200, 300))
 
     for f in futures:
         f.result()

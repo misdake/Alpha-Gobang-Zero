@@ -164,7 +164,7 @@ class PolicyValueNet(nn.Module):
         value: float
             当前局面的估值
         """
-        feature_planes = bubble_board.get_feature_planes().to(self.device)
+        feature_planes = bubble_board.get_feature_planes(bubble_board.current_player).to(self.device)
         feature_planes.unsqueeze_(0)
         p_hat, value = self(feature_planes)
 

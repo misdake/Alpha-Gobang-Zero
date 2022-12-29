@@ -200,16 +200,24 @@ class BubbleBoard:
     def get_state_reward(self, player) -> float:
         white = self.white_count
         black = self.black_count
-        # self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要？
-        # enemy_factor = 1.0 - self_factor
-        self_factor = 0.0
-        enemy_factor = 0.0
+
+        self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要？
+        enemy_factor = 1.0 - self_factor
+
+        # self_factor = 0.0
+        # enemy_factor = 0.0
+
+        # if player == self.WHITE:
+        #     return (white * (1 + self_factor) - black * (1 + enemy_factor)) / (white + black)
+        # elif player == self.BLACK:
+        #     return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
+
         if player == self.WHITE:
             return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
         elif player == self.BLACK:
             return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
 
-    def get_feature_planes(self) -> torch.Tensor:
+    def get_feature_planes(self, player) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`
 
         Returns
@@ -222,9 +230,9 @@ class BubbleBoard:
         # 添加历史信息
         for i in range(n**2):
             cell_state = self.state.get(i, self.EMPTY)
-            if np.sign(cell_state) == self.current_player:
+            if np.sign(cell_state) == player:
                 feature_planes[0, i] = abs(cell_state)
-            elif np.sign(cell_state) == -self.current_player:
+            elif np.sign(cell_state) == -player:
                 feature_planes[1, i] = -abs(cell_state)
 
         return feature_planes.view(2, n, n)

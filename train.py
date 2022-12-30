@@ -47,5 +47,5 @@ config_E = {
 }
 
 
-train_model = TrainModel(**config_C)
+train_model = TrainModel(**config_E)
 train_model.train()

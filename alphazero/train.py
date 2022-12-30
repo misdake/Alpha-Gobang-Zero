@@ -164,9 +164,9 @@ class TrainModel:
                         wdl = [1 if i == winner else -1 for i in players]
                     else:
                         wdl = [0] * len(players)
-                    state_ratio = 0.98 ** train_iter  # 0.66 @ 20, 0.36 @ 50, 0.13 @ 100
+                    state_ratio = 0.98 ** train_iter  # 0.66@20, 0.36@50, 0.13@100
                     wdl_ratio = 1.0 - state_ratio
-                    z_list = state_ratio * z_list + wdl_ratio * wdl
+                    z_list = [state_ratio * z_list[i] + wdl_ratio * wdl[i] for i in range(len(players))]
 
                 if self.value_type == ValueType.WinDrawLose:
                     # 改用传统棋类的方法设置value

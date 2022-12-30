@@ -28,7 +28,7 @@ class Node:
         self.parent = parent
         self.children = {}  # type:Dict[int, Node]
 
-    def select(self) -> tuple:
+    def select(self) -> Tuple[int, 'Node']:
         """ 返回 `score` 最大的子节点和该节点对应的 action
 
         Returns

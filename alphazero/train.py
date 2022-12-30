@@ -75,7 +75,7 @@ class PolicyValueLoss(nn.Module):
 class TrainModel:
     """ 训练模型 """
 
-    def __init__(self, name, board_len=5, n_mcts_iters=200, n_feature_planes=2, value_type=ValueType.BubbleCount, **kwargs):
+    def __init__(self, name, board_len=5, n_mcts_iters=200, n_feature_planes=2, value_type=ValueType.BubbleCount):
         self.name = name
         self.c_puct = 3
         self.batch_size = 1000

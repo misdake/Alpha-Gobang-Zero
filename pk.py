@@ -10,17 +10,20 @@ from train import *
 
 pool = ThreadPoolExecutor(max_workers=2)
 
+config_0 = AgentConfig('0', '0', 200, 2, ValueType.WinDrawLose)
+config_A = AgentConfig('A', 'A/A_500', 200, 2, ValueType.WinDrawLose)
+config_B = AgentConfig('B', 'B/B_200', 200, 2, ValueType.BubbleCount)
+config_C = AgentConfig('C', 'C/C_200', 200, 2, ValueType.BubbleCount)
+config_D = AgentConfig('D', 'D/D_200', 200, 2, ValueType.Combined)
+config_E = AgentConfig('E', 'E/E_200', 200, 6, ValueType.Combined)
+
 agents = [
     config_A,
     config_B,
     config_C,
     config_D,
     config_E,
-    {
-        'model': '0.pth',
-        'n_mcts_iters': 500,
-        'n_feature_planes': 2,
-    }
+    config_0
 ]
 lock = threading.Lock()
 futures = []
@@ -70,7 +73,6 @@ def run(i: int, j: int):
 
 def main():
     n = 25
-
     # 单循环
     # for i in range(len(agents) - 1):
     #     for j in range(i + 1, len(agents)):
@@ -82,16 +84,16 @@ def main():
     #     for _ in range(n):
     #         futures.append(pool.submit(run, i, i + 1))
 
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 0, 2))
     for _ in range(n):
-        futures.append(pool.submit(run, 0, 1))
-    for _ in range(n):
-        futures.append(pool.submit(run, 0, 2))
-    for _ in range(n):
-        futures.append(pool.submit(run, 5, 2))
-    for _ in range(n):
-        futures.append(pool.submit(run, 2, 3))
-    for _ in range(n):
-        futures.append(pool.submit(run, 3, 4))
+        futures.append(pool.submit(run, 1, 2))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 5, 2))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 2, 3))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 3, 4))
 
     for f in futures:
         f.result()

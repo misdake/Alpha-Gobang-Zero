@@ -80,8 +80,7 @@ class AlphaZeroMCTS:
             # 反向传播
             node.backup(-value)
 
-        # 计算 π，在自我博弈状态下：游戏的前三十步，温度系数为 1，后面的温度系数趋于无穷小
-        t = 1 if self.is_self_play and len(bubble_board.state) <= 30 else 1e-3
+        t = 1 if self.is_self_play else 1e-3
         visits = np.array([i.N for i in self.root.children.values()])
         pi_ = self.__getPi(visits, t)
 

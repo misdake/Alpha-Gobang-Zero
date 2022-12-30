@@ -30,7 +30,6 @@ class BubbleBoard:
 
         # 棋盘状态字典，key 为 action，value 为 current_player
         self.state = OrderedDict()
-        self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
 
         # 初始化一下，不然python不开心
         self.black_count = 1
@@ -40,6 +39,11 @@ class BubbleBoard:
         self.black_available_points = []
         self.white_available_points = []
         self.available_actions = self.black_available_points
+
+        if self.n_feature_planes > 2:
+            self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
+        else:
+            self.state_history = []
 
         # 重复的调用
         self.clear_board()
@@ -61,7 +65,8 @@ class BubbleBoard:
         self.state[self.cell_len - 1] = self.WHITE
         self._refresh_available_points()
 
-        self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
+        if self.n_feature_planes > 2:
+            self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
 
     def do_action(self, action: int):
         """ 落子并更新棋盘
@@ -130,8 +135,9 @@ class BubbleBoard:
         else:
             print("?")
 
-        self.state_history.pop(0)
-        self.state_history.append(self.state.copy())
+        if self.n_feature_planes > 2:
+            self.state_history.pop(0)
+            self.state_history.append(self.state.copy())
 
     def _refresh_available_points(self):
         self.black_available_points.clear()
@@ -237,8 +243,13 @@ class BubbleBoard:
         history_len = self.n_feature_planes // 2
 
         for h in range(history_len):
+            if self.n_feature_planes > 2:
+                state = self.state_history[h]
+            else:
+                state = self.state
+
             for i in range(n ** 2):
-                cell_state = self.state_history[h].get(i, self.EMPTY)
+                cell_state = state.get(i, self.EMPTY)
                 if np.sign(cell_state) == player:
                     feature_planes[h * 2, i] = abs(cell_state)
                 elif np.sign(cell_state) == -player:

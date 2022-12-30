@@ -1,40 +1,45 @@
 # coding: utf-8
 from alphazero.train import TrainModel, ValueType
 
-train_config_A = {
+config_A = {
     'name': 'A',
+    'model': 'A/A_500.pth',
     'board_len': 5,
     'n_mcts_iters': 200,
     'n_feature_planes': 2,
     'value_type': ValueType.WinDrawLose
 }
 
-train_config_B = {
+config_B = {
     'name': 'B',
+    'model': 'B/B_200.pth',
     'board_len': 5,
     'n_mcts_iters': 100,
     'n_feature_planes': 2,
     'value_type': ValueType.BubbleCount
 }
 
-train_config_C = {
+config_C = {
     'name': 'C',
+    'model': 'C/C_200.pth',
     'board_len': 5,
     'n_mcts_iters': 200,
     'n_feature_planes': 2,
     'value_type': ValueType.BubbleCount
 }
 
-train_config_D = {
+config_D = {
     'name': 'D',
+    'model': 'D/D_200.pth',
     'board_len': 5,
     'n_mcts_iters': 200,
     'n_feature_planes': 2,
     'value_type': ValueType.Combined
 }
 
-train_config_E = {
+config_E = {
     'name': 'E',
+    'model': 'E/E_200.pth',
     'board_len': 5,
     'n_mcts_iters': 200,
     'n_feature_planes': 6,
@@ -42,5 +47,5 @@ train_config_E = {
 }
 
 
-train_model = TrainModel(**train_config_B)
+train_model = TrainModel(**config_C)
 train_model.train()

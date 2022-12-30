@@ -12,7 +12,7 @@ from .policy_value_net import PolicyValueNet
 class AlphaZeroMCTS:
     """ 基于策略-价值网络的蒙特卡洛搜索树 """
 
-    def __init__(self, policy_value_net: PolicyValueNet, c_puct: float = 4, n_iters=1200, is_self_play=False) -> None:
+    def __init__(self, policy_value_net: PolicyValueNet, c_puct: float, n_iters: int, is_self_play=False) -> None:
         """
         Parameters
         ----------

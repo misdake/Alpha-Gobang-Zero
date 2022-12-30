@@ -16,6 +16,14 @@ from .bubble_board import BubbleBoard
 from .policy_value_net import PolicyValueNet
 from .self_play_dataset import SelfPlayData, SelfPlayDataSet
 
+from enum import Enum
+
+
+class ValueType(Enum):
+    WinDrawLose = 1
+    BubbleCount = 2
+    Combined = 3
+
 
 def exception_handler(train_func):
     """ 异常处理装饰器 """
@@ -67,65 +75,25 @@ class PolicyValueLoss(nn.Module):
 class TrainModel:
     """ 训练模型 """
 
-    def __init__(self, board_len=5, lr=0.01, n_self_plays=1500, n_mcts_iters=500,
-                 n_feature_planes=2, batch_size=500, start_train_size=500, check_frequency=100,
-                 n_test_games=10, c_puct=4, is_save_game=False, **kwargs):
-        """
-        Parameters
-        ----------
-        board_len: int
-            棋盘大小
-
-        lr: float
-            学习率
-
-        n_self_plays: int
-            自我博弈游戏局数
-
-        n_mcts_iters: int
-            蒙特卡洛树搜索次数
-
-        n_feature_planes: int
-            特征平面个数
-
-        batch_size: int
-            mini-batch 的大小
-
-        start_train_size: int
-            开始训练模型时的最小数据集尺寸
-
-        check_frequency: int
-            测试模型的频率
-
-        n_test_games: int
-            测试模型时与历史最优模型的比赛局数
-
-        c_puct: float
-            探索常数
-
-        is_use_gpu: bool
-            是否使用 GPU
-
-        is_save_game: bool
-            是否保存自对弈的棋谱
-        """
-        self.c_puct = c_puct
-        self.batch_size = batch_size
-        self.n_self_plays = n_self_plays
-        self.n_test_games = n_test_games
+    def __init__(self, name, board_len=5, n_mcts_iters=200, n_feature_planes=2, value_type=ValueType.BubbleCount, **kwargs):
+        self.name = name
+        self.c_puct = 3
+        self.batch_size = 1000
+        self.n_self_plays = 1000
         self.n_mcts_iters = n_mcts_iters
-        self.is_save_game = is_save_game
-        self.check_frequency = check_frequency
-        self.start_train_size = start_train_size
+        self.is_save_game = True
+        self.start_train_size = 1000
+        self.value_type = value_type
+
         self.device = torch.device('cpu')
         self.bubble_board = BubbleBoard(board_len, n_feature_planes)
 
         # 创建策略-价值网络和蒙特卡洛搜索树
         self.policy_value_net = self.__get_policy_value_net(board_len)
-        self.mcts = AlphaZeroMCTS(self.policy_value_net, c_puct=c_puct, n_iters=n_mcts_iters, is_self_play=True)
+        self.mcts = AlphaZeroMCTS(self.policy_value_net, c_puct=self.c_puct, n_iters=n_mcts_iters, is_self_play=True)
 
         # 创建优化器和损失函数
-        self.optimizer = optim.Adam(self.policy_value_net.parameters(), lr=lr, weight_decay=1e-4)
+        self.optimizer = optim.Adam(self.policy_value_net.parameters(), lr=0.01, weight_decay=1e-4)
         self.criterion = PolicyValueLoss()
         self.lr_scheduler = MultiStepLR(self.optimizer, [100, 300, 500], gamma=0.1)
 
@@ -133,10 +101,10 @@ class TrainModel:
         self.dataset = SelfPlayDataSet(board_len)
 
         # 记录数据
-        self.train_losses = self.__load_data('log/train_losses.json')
+        self.train_losses = self.__load_data(f'log/train_losses_{self.name}.json')
         self.games = self.__load_data('log/games.json')
 
-    def __self_play(self):
+    def __self_play(self, train_iter):
         """ 自我博弈一局
 
         Returns
@@ -154,21 +122,17 @@ class TrainModel:
         pi_list, feature_planes_list, players = [], [], []
         action_list, z_list = [], []
 
-        board_history = [board.copy()] * (board.n_feature_planes // 2)
-
         # 开始一局游戏
         while True:
-            board_history.pop(0)
-            board_history.append(board.copy())
-
             player = board.current_player
             # curr_reward = board.get_state_reward(player)
             action, pi = self.mcts.get_action(board)
 
+            # print()
             # board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
 
             # 保存每一步的数据
-            feature_plane = torch.cat(list(map(lambda h: h.get_feature_planes(player), board_history)))
+            feature_plane = board.get_feature_planes(player)
             feature_planes_list.append(feature_plane)
             players.append(player)
             action_list.append(action)
@@ -195,12 +159,21 @@ class TrainModel:
             if is_over:
                 print()
 
-                # TODO 暂时添加在这里，用于还原1和-1的v
-                # 改用传统棋类的方法设置value
-                if winner != 0:
-                    z_list = [1 if i == winner else -1 for i in players]
-                else:
-                    z_list = [0] * len(players)
+                if self.value_type == ValueType.Combined:
+                    if winner != 0:
+                        wdl = [1 if i == winner else -1 for i in players]
+                    else:
+                        wdl = [0] * len(players)
+                    state_ratio = 0.98 ** train_iter  # 0.66 @ 20, 0.36 @ 50, 0.13 @ 100
+                    wdl_ratio = 1.0 - state_ratio
+                    z_list = state_ratio * z_list + wdl_ratio * wdl
+
+                if self.value_type == ValueType.WinDrawLose:
+                    # 改用传统棋类的方法设置value
+                    if winner != 0:
+                        z_list = [1 if i == winner else -1 for i in players]
+                    else:
+                        z_list = [0] * len(players)
 
                 print(f'winner {winner}')
 
@@ -219,17 +192,17 @@ class TrainModel:
 
     @exception_handler
     def train(self):
-        train_count = 0
+        train_iter = 0
         """ 训练模型 """
         for i in range(self.n_self_plays):
             print(f'🏹 正在进行第 {i + 1} 局自我博弈游戏...')
-            self.dataset.append(self.__self_play())
+            self.dataset.append(self.__self_play(train_iter))
 
             # 如果数据集中的数据量大于 start_train_size 就进行一次训练
             if len(self.dataset) >= self.start_train_size:
                 data_loader = iter(DataLoader(self.dataset, self.batch_size, shuffle=True, drop_last=False))
-                print(f'💊 第 {train_count + 1} 次训练...')
-                train_count += 1
+                print(f'💊 第 {train_iter + 1} 次训练...')
+                train_iter += 1
 
                 self.policy_value_net.train()
                 # 随机选出一批数据来训练，防止过拟合
@@ -254,12 +227,9 @@ class TrainModel:
                 self.train_losses.append([i, loss.item()])
                 print(f"🚩 train_loss = {loss.item():<10.5f}\n")
 
-                if train_count % 50 == 0:
-                    model_path = f'model/checkpoint/saved_bubble_reward_{train_count}.pth'
+                if train_iter % 50 == 0:
+                    model_path = f'model/checkpoint/{self.name}_{train_iter}.pth'
                     torch.save(self.mcts.policy_value_net, model_path)
-            # 测试模型
-            # if (i + 1) % self.check_frequency == 0:
-            #     self.__test_model()
 
     def save_model(self, model_name: str, loss_name: str, game_name: str):
         """ 保存模型

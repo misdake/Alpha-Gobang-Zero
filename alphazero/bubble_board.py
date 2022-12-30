@@ -30,6 +30,7 @@ class BubbleBoard:
 
         # 棋盘状态字典，key 为 action，value 为 current_player
         self.state = OrderedDict()
+        self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
 
         # 初始化一下，不然python不开心
         self.black_count = 1
@@ -59,6 +60,8 @@ class BubbleBoard:
         self.state[0] = self.BLACK
         self.state[self.cell_len - 1] = self.WHITE
         self._refresh_available_points()
+
+        self.state_history = [self.state.copy()] * (self.n_feature_planes // 2)
 
     def do_action(self, action: int):
         """ 落子并更新棋盘
@@ -126,6 +129,9 @@ class BubbleBoard:
             self.current_player = self.BLACK
         else:
             print("?")
+
+        self.state_history.pop(0)
+        self.state_history.append(self.state.copy())
 
     def _refresh_available_points(self):
         self.black_available_points.clear()
@@ -201,11 +207,11 @@ class BubbleBoard:
         white = self.white_count
         black = self.black_count
 
-        self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要？
-        enemy_factor = 1.0 - self_factor
+        # self_factor = 0.5 ** (self.action_len / self.cell_len)  # 前期自己比较重要，后期杀敌比较重要？
+        # enemy_factor = 1.0 - self_factor
 
-        # self_factor = 0.0
-        # enemy_factor = 0.0
+        self_factor = 0.0
+        enemy_factor = 0.0
 
         # if player == self.WHITE:
         #     return (white * (1 + self_factor) - black * (1 + enemy_factor)) / (white + black)
@@ -226,16 +232,19 @@ class BubbleBoard:
             特征平面图像
         """
         n = self.board_len
-        feature_planes = torch.zeros((2, n ** 2))
-        # 添加历史信息
-        for i in range(n**2):
-            cell_state = self.state.get(i, self.EMPTY)
-            if np.sign(cell_state) == player:
-                feature_planes[0, i] = abs(cell_state)
-            elif np.sign(cell_state) == -player:
-                feature_planes[1, i] = -abs(cell_state)
+        feature_planes = torch.zeros((self.n_feature_planes, n ** 2))
 
-        return feature_planes.view(2, n, n)
+        history_len = self.n_feature_planes // 2
+
+        for h in range(history_len):
+            for i in range(n ** 2):
+                cell_state = self.state_history[h].get(i, self.EMPTY)
+                if np.sign(cell_state) == player:
+                    feature_planes[h * 2, i] = abs(cell_state)
+                elif np.sign(cell_state) == -player:
+                    feature_planes[h * 2 + 1, i] = -abs(cell_state)
+
+        return feature_planes.view(self.n_feature_planes, n, n)
 
     def print(self, highlight: tuple = None):
         print(' +-', end='')

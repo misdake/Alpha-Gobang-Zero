@@ -1,20 +1,46 @@
 # coding: utf-8
-from alphazero.train import TrainModel
+from alphazero.train import TrainModel, ValueType
 
-
-train_config = {
-    'lr': 1e-2,
-    'c_puct': 3,
+train_config_A = {
+    'name': 'A',
     'board_len': 5,
-    'batch_size': 1000,
-    'is_use_gpu': True,
-    'n_test_games': 10,
     'n_mcts_iters': 200,
-    'n_self_plays': 1000,
-    'is_save_game': True,
     'n_feature_planes': 2,
-    'check_frequency': 100,
-    'start_train_size': 1000
+    'value_type': ValueType.WinDrawLose
 }
-train_model = TrainModel(**train_config)
+
+train_config_B = {
+    'name': 'B',
+    'board_len': 5,
+    'n_mcts_iters': 100,
+    'n_feature_planes': 2,
+    'value_type': ValueType.BubbleCount
+}
+
+train_config_C = {
+    'name': 'C',
+    'board_len': 5,
+    'n_mcts_iters': 200,
+    'n_feature_planes': 2,
+    'value_type': ValueType.BubbleCount
+}
+
+train_config_D = {
+    'name': 'D',
+    'board_len': 5,
+    'n_mcts_iters': 200,
+    'n_feature_planes': 2,
+    'value_type': ValueType.Combined
+}
+
+train_config_E = {
+    'name': 'E',
+    'board_len': 5,
+    'n_mcts_iters': 200,
+    'n_feature_planes': 6,
+    'value_type': ValueType.Combined
+}
+
+
+train_model = TrainModel(**train_config_B)
 train_model.train()

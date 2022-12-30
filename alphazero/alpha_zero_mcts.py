@@ -70,10 +70,8 @@ class AlphaZeroMCTS:
             player = board.current_player
 
             if not is_over:
-                if self.is_self_play:
-                    p = 0.9 * p + 0.1 / len(p) * np.ones(len(p))  # 训练时加一点底噪，平摊一下
+                # TODO 是否需要一个随训练逐渐减少的噪音？
                 node.expand(zip(board.available_actions, p))
-                # value = math.tanh(board.get_state_reward(player))  # TODO 暂时注释掉，用于还原1和-1的v
             elif winner != 0:
                 value = 1 if winner == player else -1
             else:

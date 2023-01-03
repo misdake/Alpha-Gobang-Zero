@@ -62,7 +62,7 @@ class AlphaZeroMCTS:
 
             # 判断游戏是否结束或者深度受到限制，如果没结束就拓展叶节点
             if self.is_self_play:
-                is_over, winner = board.is_game_over_with_limit(200)
+                is_over, winner = board.is_game_over_with_limit()
             else:
                 is_over, winner = board.is_game_over()
 
@@ -90,7 +90,7 @@ class AlphaZeroMCTS:
 
         if self.is_self_play:
             # 创建维度为 board_len^2 的 π
-            pi = np.zeros(bubble_board.board_len ** 2)
+            pi = np.zeros(bubble_board.board_w * bubble_board.board_h)
             pi[actions] = pi_
             # 更新根节点
             self.root = self.root.children[action]

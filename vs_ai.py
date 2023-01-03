@@ -3,13 +3,30 @@
 from alphazero import BubbleBoard
 from game.agent import Agent
 
-board = BubbleBoard(board_len=5)
-agent = Agent(board, "model/best_policy_value_net.pth")
+board_w = 9
+board_h = 6
+
+board = BubbleBoard(board_w=board_w, board_h=board_h)
+agent = Agent(board, "model/history/0_9x6.pth", 400)
 
 board.print()
 
 self_play = False
 playing = True
+
+ai_first = False
+
+if ai_first:
+    # 如果AI先手就先运行这个
+    print('ai running...')
+    action = agent.run()
+    board.do_action(action)
+    x = action % board_w
+    y = action // board_w
+
+    print(f'ai position: {x}, {y}')
+    board.print((x, y))
+
 while playing:
     if self_play:
         input_var = "ai"
@@ -25,8 +42,8 @@ while playing:
     if input_var == "ai" or self_play:
         print('ai running...')
         action = agent.run()
-        x = action // 5
-        y = action % 5
+        x = action % board_w
+        y = action // board_w
     else:
         split = input_var.split(",")
         try:
@@ -59,8 +76,8 @@ while playing:
     print('ai running...')
     action = agent.run()
     board.do_action(action)
-    x = action // 5
-    y = action % 5
+    x = action % board_w
+    y = action // board_w
 
     print(f'ai position: {x}, {y}')
     board.print((x, y))

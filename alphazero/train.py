@@ -75,7 +75,7 @@ class PolicyValueLoss(nn.Module):
 class TrainModel:
     """ 训练模型 """
 
-    def __init__(self, name, board_len=5, n_mcts_iters=200, n_feature_planes=2, value_type=ValueType.BubbleCount):
+    def __init__(self, name, board_w: int, board_h: int, n_mcts_iters, n_feature_planes, value_type=ValueType.BubbleCount):
         self.name = name
         self.c_puct = 3
         self.batch_size = 1000
@@ -86,10 +86,10 @@ class TrainModel:
         self.value_type = value_type
 
         self.device = torch.device('cpu')
-        self.bubble_board = BubbleBoard(board_len, n_feature_planes)
+        self.bubble_board = BubbleBoard(board_w, board_h, n_feature_planes)
 
         # 创建策略-价值网络和蒙特卡洛搜索树
-        self.policy_value_net = self.__get_policy_value_net(board_len)
+        self.policy_value_net = self.__get_policy_value_net(board_w, board_h)
         self.mcts = AlphaZeroMCTS(self.policy_value_net, c_puct=self.c_puct, n_iters=n_mcts_iters, is_self_play=True)
 
         # 创建优化器和损失函数
@@ -98,7 +98,7 @@ class TrainModel:
         self.lr_scheduler = MultiStepLR(self.optimizer, [100, 300, 500], gamma=0.1)
 
         # 创建数据集
-        self.dataset = SelfPlayDataSet(board_len)
+        self.dataset = SelfPlayDataSet(board_w, board_h)
 
         # 记录数据
         self.train_losses = self.__load_data(f'log/train_losses_{self.name}.json')
@@ -140,7 +140,7 @@ class TrainModel:
             board.do_action(action)
 
             # 判断游戏是否结束
-            is_over, winner = board.is_game_over_with_limit(200)
+            is_over, winner = board.is_game_over_with_limit()
 
             # 记录状态价值
             next_reward = board.get_state_reward(player)
@@ -267,7 +267,7 @@ class TrainModel:
         is_over, winner = self.bubble_board.is_game_over()
         return is_over, winner
 
-    def __get_policy_value_net(self, board_len=9):
+    def __get_policy_value_net(self, board_w: int, board_h: int):
         """ 创建策略-价值网络，如果存在历史最优模型则直接载入最优模型 """
         os.makedirs('model', exist_ok=True)
 
@@ -284,7 +284,7 @@ class TrainModel:
         else:
             print(f'💎 初始化模型 {model} ...\n')
             net = PolicyValueNet(n_feature_planes=self.bubble_board.n_feature_planes,
-                                 board_len=board_len).to(self.device)
+                                 board_w=board_w, board_h=board_h).to(self.device)
 
         return net
 

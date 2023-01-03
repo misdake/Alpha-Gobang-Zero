@@ -51,21 +51,11 @@ class ResidueBlock(nn.Module):
 class PolicyHead(nn.Module):
     """ 策略头 """
 
-    def __init__(self, in_channels=128, board_len=9):
-        """
-        Parameters
-        ----------
-        in_channels: int
-            输入通道数
-
-        board_len: int
-            棋盘大小
-        """
+    def __init__(self, in_channels, board_w: int, board_h: int):
         super().__init__()
-        self.board_len = board_len
         self.in_channels = in_channels
         self.conv = ConvBlock(in_channels, 2, 1)
-        self.fc = nn.Linear(2*board_len**2, board_len**2)
+        self.fc = nn.Linear(2*board_w*board_h, board_w*board_h)
 
     def forward(self, x):
         x = self.conv(x)
@@ -76,7 +66,7 @@ class PolicyHead(nn.Module):
 class ValueHead(nn.Module):
     """ 价值头 """
 
-    def __init__(self, in_channels=128, board_len=9):
+    def __init__(self, in_channels, board_w: int, board_h: int):
         """
         Parameters
         ----------
@@ -88,10 +78,9 @@ class ValueHead(nn.Module):
         """
         super().__init__()
         self.in_channels = in_channels
-        self.board_len = board_len
         self.conv = ConvBlock(in_channels, 1, kernel_size=1)
         self.fc = nn.Sequential(
-            nn.Linear(board_len**2, 128),
+            nn.Linear(board_w * board_h, 128),
             nn.ReLU(),
             nn.Linear(128, 1),
             nn.Tanh()
@@ -106,7 +95,7 @@ class ValueHead(nn.Module):
 class PolicyValueNet(nn.Module):
     """ 策略价值网络 """
 
-    def __init__(self, board_len=5, n_feature_planes=2):
+    def __init__(self, board_w: int , board_h: int, n_feature_planes=2):
         """
         Parameters
         ----------
@@ -117,14 +106,13 @@ class PolicyValueNet(nn.Module):
             输入图像通道数，对应特征
         """
         super().__init__()
-        self.board_len = board_len
         self.n_feature_planes = n_feature_planes
         self.device = torch.device('cpu')
         self.conv = ConvBlock(n_feature_planes, 128, 3, padding=1)
         self.residues = nn.Sequential(
-            *[ResidueBlock(128, 128) for i in range(4)])  # 能够传播的范围
-        self.policy_head = PolicyHead(128, board_len)
-        self.value_head = ValueHead(128, board_len)
+            *[ResidueBlock(128, 128) for _ in range(6)])
+        self.policy_head = PolicyHead(128, board_w, board_h)
+        self.value_head = ValueHead(128, board_w, board_h)
 
     def forward(self, x):
         """ 前馈，输出 `p_hat` 和 `V`

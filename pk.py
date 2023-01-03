@@ -63,14 +63,14 @@ def pk(board1: BubbleBoard, board2: BubbleBoard, agent1: Agent, agent2: Agent) -
         action1 = agent1.run()
         board1.do_action(action1)
         board2.do_action(action1)
-        is_over, winner = board1.is_game_over_with_limit(200)
+        is_over, winner = board1.is_game_over_with_limit()
         if is_over:
             return winner
 
         action2 = agent2.run()
         board1.do_action(action2)
         board2.do_action(action2)
-        is_over, winner = board1.is_game_over_with_limit(200)
+        is_over, winner = board1.is_game_over_with_limit()
         if is_over:
             return winner
 

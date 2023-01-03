@@ -14,18 +14,10 @@ class BubbleBoard:
     EMPTY = 0
     BLACK = 1
 
-    def __init__(self, board_len=5, n_feature_planes=2):
-        """
-        Parameters
-        ----------
-        board_len: int
-            棋盘边长
-
-        n_feature_planes: int
-            特征平面的个数，必须为偶数
-        """
-        self.board_len = board_len
-        self.cell_len = self.board_len ** 2
+    def __init__(self, board_w: int, board_h: int, n_feature_planes=2):
+        self.board_w = board_w
+        self.board_h = board_h
+        self.cell_len = self.board_w * self.board_h
         self.n_feature_planes = n_feature_planes
 
         # 棋盘状态字典，key 为 action，value 为 current_player
@@ -105,16 +97,17 @@ class BubbleBoard:
             while len(curr_iter) > 0:
                 # 对于每个curr，都将4个泡泡分裂到四周
                 for i in iter(curr_iter):
-                    row, col = i // self.board_len, i % self.board_len
+                    x = i % self.board_w
+                    y = i // self.board_w
                     directions = [(0, -1), (0, 1), (-1, 0), (1, 0)]
                     i_player = np.sign(self.state[i])  # 玩家的符号位
 
                     self.state[i] -= i_player * 4  # 4个泡泡分裂开，我想了一下应该不可能到8的吧，所以只减4就行
                     for d in range(4):  # 向四个方向分裂开
-                        row_t = row + directions[d][0]
-                        col_t = col + directions[d][1]
-                        if 0 <= row_t < self.board_len and 0 <= col_t < self.board_len:
-                            j = row_t * self.board_len + col_t  # 上下左右中的一个
+                        x_t = x + directions[d][0]
+                        y_t = y + directions[d][1]
+                        if 0 <= y_t < self.board_h and 0 <= x_t < self.board_w:
+                            j = y_t * self.board_w + x_t  # 上下左右中的一个
                             self.state[j] = i_player * (abs(self.state.get(j, self.EMPTY)) + 1)  # 加一个泡泡，并设置玩家
                             if abs(self.state[j]) == 4:  # 如果到达4个就要下个轮回新增
                                 next_iter.add(j)
@@ -166,7 +159,7 @@ class BubbleBoard:
         update_ok: bool
             是否成功落子
         """
-        action = pos[0] * self.board_len + pos[1]
+        action = pos[0] + pos[1] * self.board_w
         if action in self.available_actions:
             self.do_action(action)
             return True
@@ -202,7 +195,7 @@ class BubbleBoard:
         else:
             return False, 0
 
-    def is_game_over_with_limit(self, max_action=100) -> Tuple[bool, int]:
+    def is_game_over_with_limit(self, max_action=400) -> Tuple[bool, int]:
         is_over, winner = self.is_game_over()
         if self.action_len >= max_action:
             is_over = True
@@ -225,9 +218,9 @@ class BubbleBoard:
         #     return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
 
         if player == self.WHITE:
-            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
+            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / 3 / self.cell_len
         elif player == self.BLACK:
-            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
+            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / 3 / self.cell_len
 
     def get_feature_planes(self, player) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`
@@ -237,8 +230,8 @@ class BubbleBoard:
         feature_planes: Tensor of shape `(n_feature_planes, board_len, board_len)`
             特征平面图像
         """
-        n = self.board_len
-        feature_planes = torch.zeros((self.n_feature_planes, n ** 2))
+        n = self.board_w * self.board_h
+        feature_planes = torch.zeros((self.n_feature_planes, n))
 
         history_len = self.n_feature_planes // 2
 
@@ -248,26 +241,26 @@ class BubbleBoard:
             else:
                 state = self.state
 
-            for i in range(n ** 2):
+            for i in range(n):
                 cell_state = state.get(i, self.EMPTY)
                 if np.sign(cell_state) == player:
                     feature_planes[h * 2, i] = abs(cell_state)
                 elif np.sign(cell_state) == -player:
                     feature_planes[h * 2 + 1, i] = -abs(cell_state)
 
-        return feature_planes.view(self.n_feature_planes, n, n)
+        return feature_planes.view(self.n_feature_planes, self.board_w, self.board_h)
 
     def print(self, highlight: tuple = None):
         print(' +-', end='')
-        for i in range(self.board_len):
-            print(f'--{i}--', end='')
+        for x in range(self.board_w):
+            print(f'--{x}--', end='')
         print()
-        for j in range(self.board_len):
-            print(f'{j}|', end='')
-            for i in range(self.board_len):
-                index = i * self.board_len + j
+        for y in range(self.board_h):
+            print(f'{y}|', end='')
+            for x in range(self.board_w):
+                index = y * self.board_w + x
                 state = self.state.get(index, self.EMPTY)
-                if highlight is not None and i == highlight[0] and j == highlight[1]:
+                if highlight is not None and x == highlight[0] and y == highlight[1]:
                     print(' >', end='')
                 else:
                     print('  ', end='')

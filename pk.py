@@ -10,11 +10,11 @@ from train import *
 
 pool = ThreadPoolExecutor(max_workers=2)
 
-config_0 = AgentConfig('0', '0', 200, 2, ValueType.WinDrawLose)
-config_A = AgentConfig('A', 'A/A_500', 200, 2, ValueType.WinDrawLose)
-config_B = AgentConfig('B', 'B/B_200', 200, 2, ValueType.BubbleCount)
+config_0 = AgentConfig('0', 'history/0', 200, 2, ValueType.WinDrawLose)
+config_A = AgentConfig('A', 'A/A_200', 200, 2, ValueType.WinDrawLose)
+config_B = AgentConfig('B', 'B/B_200', 100, 2, ValueType.BubbleCount)
 config_C = AgentConfig('C', 'C/C_200', 200, 2, ValueType.BubbleCount)
-config_D = AgentConfig('D', 'D/D_200', 200, 2, ValueType.Combined)
+config_D = AgentConfig('D', 'D/D_400', 200, 6, ValueType.BubbleCount)
 config_E = AgentConfig('E', 'E/E_200', 200, 6, ValueType.Combined)
 
 agents = [
@@ -25,9 +25,33 @@ agents = [
     config_E,
     config_0
 ]
+
+
+# config_C50 = AgentConfig('C', 'C/C_50', 200, 2, ValueType.BubbleCount)
+# config_C100 = AgentConfig('C', 'C/C_100', 200, 2, ValueType.BubbleCount)
+# config_C150 = AgentConfig('C', 'C/C_150', 200, 2, ValueType.BubbleCount)
+# config_C200 = AgentConfig('C', 'C/C_200', 200, 2, ValueType.BubbleCount)
+# agents = [
+#     config_C50,
+#     config_C100,
+#     config_C150,
+#     config_C200,
+# ]
+# config_C200 = AgentConfig('C', 'checkpoint/C_200', 200, 2, ValueType.BubbleCount)
+# config_C400 = AgentConfig('C', 'checkpoint/C_400', 200, 2, ValueType.BubbleCount)
+# config_C600 = AgentConfig('C', 'checkpoint/C_600', 200, 2, ValueType.BubbleCount)
+# config_C800 = AgentConfig('C', 'checkpoint/C_800', 200, 2, ValueType.BubbleCount)
+# agents = [
+#     config_C200,
+#     config_C400,
+#     config_C600,
+#     config_C800,
+# ]
+
+
 lock = threading.Lock()
 futures = []
-results = np.zeros([len(agents), len(agents), 3])
+results = np.zeros([len(agents), len(agents), 6])
 
 
 # 用两个board来兼容不同feature_plane数量的模型
@@ -66,7 +90,7 @@ def run(i: int, j: int):
 
     winner = pk(board1, board2, agent2, agent1)
     lock.acquire()
-    results[i][j][1 + winner] += 1
+    results[i][j][1 + winner + 3] += 1
     lock.release()
     print(f'finish {j} {i}, winner {winner}')
 
@@ -84,12 +108,16 @@ def main():
     #     for _ in range(n):
     #         futures.append(pool.submit(run, i, i + 1))
 
-    # for _ in range(n):
-    #     futures.append(pool.submit(run, 0, 2))
     for _ in range(n):
-        futures.append(pool.submit(run, 1, 2))
+        futures.append(pool.submit(run, 0, 2))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 1, 2))
     # for _ in range(n):
     #     futures.append(pool.submit(run, 5, 2))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 2, 3))
+    # for _ in range(n):
+    #     futures.append(pool.submit(run, 3, 4))
     # for _ in range(n):
     #     futures.append(pool.submit(run, 2, 3))
     # for _ in range(n):

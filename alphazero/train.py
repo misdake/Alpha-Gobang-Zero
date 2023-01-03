@@ -79,7 +79,7 @@ class TrainModel:
         self.name = name
         self.c_puct = 3
         self.batch_size = 1000
-        self.n_self_plays = 1000
+        self.n_self_plays = 10000
         self.n_mcts_iters = n_mcts_iters
         self.is_save_game = True
         self.start_train_size = 1000

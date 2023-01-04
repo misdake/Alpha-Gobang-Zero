@@ -1,4 +1,5 @@
 # coding: utf-8
+import math
 from typing import Tuple
 from copy import deepcopy
 from collections import OrderedDict
@@ -218,9 +219,9 @@ class BubbleBoard:
         #     return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
 
         if player == self.WHITE:
-            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
+            return (math.log10(1 + white) - math.log10(1 + black)) * 0.5
         elif player == self.BLACK:
-            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
+            return (math.log10(1 + black) - math.log10(1 + white)) * 0.5
 
     def get_feature_planes(self, player) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`

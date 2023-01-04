@@ -153,15 +153,16 @@ class TrainModel:
 
             # 记录状态价值
             next_reward = board.get_state_reward(player)
-            action_reward = next_reward - curr_reward - 1 / board.cell_len
+            action_reward = next_reward - curr_reward
 
-            z_list.append(math.tanh(next_reward))
+            value = math.tanh(next_reward)
+            z_list.append(value)
 
             if player > 0:
                 print('+', end='')
             else:
                 print('-', end='')
-            print(f'{action:02}({action_reward:.3}) ', end='')
+            print(f'{action:02}({value:.3}) ', end='')
             if board.action_len % 10 == 0:
                 print(f'  --{board.action_len}')
 

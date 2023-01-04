@@ -7,14 +7,14 @@ board_w = 9
 board_h = 6
 
 board = BubbleBoard(board_w=board_w, board_h=board_h)
-agent = Agent(board, "model/history/0_9x6.pth", 400)
+agent = Agent(board, "model/X/X_600.pth", 400)
 
 board.print()
 
 self_play = False
 playing = True
 
-ai_first = False
+ai_first = True
 
 if ai_first:
     # 如果AI先手就先运行这个

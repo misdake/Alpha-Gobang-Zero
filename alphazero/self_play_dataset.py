@@ -36,9 +36,9 @@ class SelfPlayDataSet(Dataset):
         # 使用翻转和镜像扩充已有数据集
         for z, pi, feature_planes in zip(z_list, pi_list, feature_planes_list):
             for i in range(2):
-                # 逆时针旋转 i*180°
-                rot_features = torch.rot90(Tensor(feature_planes), i*2, (1, 2))
-                rot_pi = torch.rot90(Tensor(pi.reshape(self.board_w, self.board_h)), i*2)
+                # 旋转 i*180°
+                rot_features = torch.rot90(Tensor(feature_planes), i * 2, (1, 2))
+                rot_pi = torch.rot90(Tensor(pi.reshape(self.board_w, self.board_h)), i * 2)
                 self.__data_deque.append(
                     (rot_features, rot_pi.flatten(), z))
 

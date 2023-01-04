@@ -109,8 +109,7 @@ class PolicyValueNet(nn.Module):
         self.n_feature_planes = n_feature_planes
         self.device = torch.device('cpu')
         self.conv = ConvBlock(n_feature_planes, 128, 3, padding=1)
-        self.residues = nn.Sequential(
-            *[ResidueBlock(128, 128) for _ in range(6)])
+        self.residues = nn.Sequential(*[ResidueBlock(128, 128) for _ in range(7)])
         self.policy_head = PolicyHead(128, board_w, board_h)
         self.value_head = ValueHead(128, board_w, board_h)
 

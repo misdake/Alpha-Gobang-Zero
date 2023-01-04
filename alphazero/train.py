@@ -4,6 +4,7 @@ import math
 import os
 import time
 import traceback
+import random
 
 import torch
 import torch.nn.functional as F
@@ -82,7 +83,7 @@ class TrainModel:
         self.n_self_plays = 10000
         self.n_mcts_iters = n_mcts_iters
         self.is_save_game = True
-        self.start_train_size = 1000
+        self.start_train_size = 2000
         self.value_type = value_type
 
         self.device = torch.device('cpu')
@@ -94,7 +95,7 @@ class TrainModel:
 
         # 创建优化器和损失函数
         self.optimizer = optim.Adam(self.policy_value_net.parameters(), lr=0.01, weight_decay=1e-4)
-        self.criterion = PolicyValueLoss()
+        self.loss = PolicyValueLoss()
         self.lr_scheduler = MultiStepLR(self.optimizer, [100, 300, 500], gamma=0.1)
 
         # 创建数据集
@@ -119,17 +120,25 @@ class TrainModel:
         self.policy_value_net.eval()
         board = self.bubble_board
         board.clear_board()
+
+        # 50%概率随机一个开局，防止自对弈情况下开局形成定式
+        if random.randint(0, 1) == 1:
+            for _ in range(random.randint(0, 100)):
+                choice = random.choice(board.available_actions)
+                board.do_action(choice)
+
         pi_list, feature_planes_list, players = [], [], []
         action_list, z_list = [], []
 
         # 开始一局游戏
         while True:
             player = board.current_player
-            # curr_reward = board.get_state_reward(player)
+            curr_reward = board.get_state_reward(player)
             action, pi = self.mcts.get_action(board)
 
-            # print()
-            # board.print((action // self.bubble_board.board_len, action % self.bubble_board.board_len))
+            if train_iter % 10 == 0:
+                print()
+                board.print((action % self.bubble_board.board_w, action // self.bubble_board.board_w))
 
             # 保存每一步的数据
             feature_plane = board.get_feature_planes(player)
@@ -144,7 +153,7 @@ class TrainModel:
 
             # 记录状态价值
             next_reward = board.get_state_reward(player)
-            # action_reward = next_reward - curr_reward
+            action_reward = next_reward - curr_reward - 1 / board.cell_len
 
             z_list.append(math.tanh(next_reward))
 
@@ -152,9 +161,9 @@ class TrainModel:
                 print('+', end='')
             else:
                 print('-', end='')
-            print(f'{action:02} ', end='')
+            print(f'{action:02}({action_reward:.3}) ', end='')
             if board.action_len % 10 == 0:
-                print()
+                print(f'  --{board.action_len}')
 
             if is_over:
                 print()
@@ -186,8 +195,7 @@ class TrainModel:
         if self.is_save_game:
             self.games.append(action_list)
 
-        self_play_data = SelfPlayData(
-            pi_list=pi_list, z_list=z_list, feature_planes_list=feature_planes_list)
+        self_play_data = SelfPlayData(pi_list=pi_list, z_list=z_list, feature_planes_list=feature_planes_list)
         return self_play_data
 
     @exception_handler
@@ -198,38 +206,41 @@ class TrainModel:
             print(f'🏹 正在进行第 {i + 1} 局自我博弈游戏...')
             self.dataset.append(self.__self_play(train_iter))
 
+            print(f'数据集容量 {len(self.dataset)}')
+
             # 如果数据集中的数据量大于 start_train_size 就进行一次训练
             if len(self.dataset) >= self.start_train_size:
-                data_loader = iter(DataLoader(self.dataset, self.batch_size, shuffle=True, drop_last=False))
-                print(f'💊 第 {train_iter + 1} 次训练...')
-                train_iter += 1
+                for _ in range(5):
+                    data_loader = iter(DataLoader(self.dataset, self.batch_size, shuffle=True, drop_last=False))
+                    print(f'💊 第 {train_iter + 1} 次训练...')
+                    train_iter += 1
 
-                self.policy_value_net.train()
-                # 随机选出一批数据来训练，防止过拟合
-                feature_planes, pi, z = next(data_loader)
-                feature_planes = feature_planes.to(self.device)
-                pi, z = pi.to(self.device), z.to(self.device)
+                    self.policy_value_net.train()
+                    # 随机选出一批数据来训练，防止过拟合
+                    feature_planes, pi, z = next(data_loader)
+                    feature_planes = feature_planes.to(self.device)
+                    pi, z = pi.to(self.device), z.to(self.device)
 
-                # 前馈
-                p_hat, value = self.policy_value_net(feature_planes)
-                # 梯度清零
-                self.optimizer.zero_grad()
-                # 计算损失
-                loss = self.criterion(p_hat, pi, value.flatten(), z)
-                # 误差反向传播
-                loss.backward()
-                # 更新参数
-                self.optimizer.step()
-                # 学习率退火
-                self.lr_scheduler.step()
+                    # 前馈
+                    p_hat, value = self.policy_value_net(feature_planes)
+                    # 梯度清零
+                    self.optimizer.zero_grad()
+                    # 计算损失
+                    loss = self.loss(p_hat, pi, value.flatten(), z)
+                    # 误差反向传播
+                    loss.backward()
+                    # 更新参数
+                    self.optimizer.step()
+                    # 学习率退火
+                    self.lr_scheduler.step()
 
-                # 记录误差
-                self.train_losses.append([i, loss.item()])
-                print(f"🚩 train_loss = {loss.item():<10.5f}\n")
+                    # 记录误差
+                    self.train_losses.append([i, loss.item()])
+                    print(f"🚩 train_loss = {loss.item():<10.5f}\n")
 
-                if train_iter % 50 == 0:
-                    model_path = f'model/checkpoint/{self.name}_{train_iter}.pth'
-                    torch.save(self.mcts.policy_value_net, model_path)
+                    if train_iter % 50 == 0:
+                        model_path = f'model/checkpoint/{self.name}_{train_iter}.pth'
+                        torch.save(self.mcts.policy_value_net, model_path)
 
     def save_model(self, model_name: str, loss_name: str, game_name: str):
         """ 保存模型
@@ -269,11 +280,11 @@ class TrainModel:
 
     def __get_policy_value_net(self, board_w: int, board_h: int):
         """ 创建策略-价值网络，如果存在历史最优模型则直接载入最优模型 """
-        os.makedirs('model', exist_ok=True)
+        os.makedirs('checkpoint', exist_ok=True)
+        os.makedirs('history', exist_ok=True)
 
         best_model = 'best_policy_value_net.pth'
-        history_models = sorted(
-            [i for i in os.listdir('model') if i.startswith('last')])
+        history_models = sorted([i for i in os.listdir('model') if i.startswith('last')])
 
         # 从历史模型中选取最新模型
         model = history_models[-1] if history_models else best_model

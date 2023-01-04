@@ -22,7 +22,7 @@ config_C = AgentConfig('C', 'C/C_200', 200, 2, ValueType.BubbleCount)
 config_D = AgentConfig('D', 'D/D_200', 200, 6, ValueType.BubbleCount)
 config_E = AgentConfig('E', 'E/E_200', 200, 6, ValueType.Combined)
 
-config_X = AgentConfig('X', 'X/X_200', 400, 2, ValueType.BubbleCount)
+config_X = AgentConfig('X', 'X/X_200', 200, 2, ValueType.BubbleCount)
 
 if __name__ == '__main__':
     config = config_X

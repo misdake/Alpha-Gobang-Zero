@@ -218,9 +218,9 @@ class BubbleBoard:
         #     return (black * (1 + self_factor) - white * (1 + enemy_factor)) / (white + black)
 
         if player == self.WHITE:
-            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / 3 / self.cell_len
+            return (white * (1 + self_factor) - black * (1 + enemy_factor)) / self.cell_len
         elif player == self.BLACK:
-            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / 3 / self.cell_len
+            return (black * (1 + self_factor) - white * (1 + enemy_factor)) / self.cell_len
 
     def get_feature_planes(self, player) -> torch.Tensor:
         """ 棋盘状态特征张量，维度为 `(n_feature_planes, board_len, board_len)`

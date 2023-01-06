@@ -152,10 +152,10 @@ class TrainModel:
             is_over, winner = board.is_game_over_with_limit()
 
             # 记录状态价值
-            next_reward = board.get_state_reward(player)
-            action_reward = next_reward - curr_reward
+            # next_reward = board.get_state_reward(player)
+            # action_reward = next_reward - curr_reward
 
-            value = math.tanh(next_reward)
+            value = math.tanh(curr_reward)
             z_list.append(value)
 
             if player > 0:
@@ -211,7 +211,7 @@ class TrainModel:
 
             # 如果数据集中的数据量大于 start_train_size 就进行一次训练
             if len(self.dataset) >= self.start_train_size:
-                for _ in range(5):
+                for _ in range(2):
                     data_loader = iter(DataLoader(self.dataset, self.batch_size, shuffle=True, drop_last=False))
                     print(f'💊 第 {train_iter + 1} 次训练...')
                     train_iter += 1
